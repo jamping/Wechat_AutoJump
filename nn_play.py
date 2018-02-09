@@ -10,6 +10,7 @@ import argparse
 import tensorflow as tf
 from model import JumpModel
 from model_fine import JumpModelFine
+import random
 
 def multi_scale_search(pivot, screen, range=0.3, num=10):
     H, W = screen.shape[:2]
@@ -158,7 +159,11 @@ class WechatAutoJump(object):
         distance = np.linalg.norm(player_pos - target_pos)
         press_time = distance * self.sensitivity
         press_time = int(np.rint(press_time))
-        press_h, press_w = int(0.82*self.resolution[0]), self.resolution[1]//2
+
+        press_h = player_pos[0] + random.gauss(0, 50)
+        press_w = player_pos[1] + random.gauss(0, 50)
+
+        #press_h, press_w = int(0.82*self.resolution[0]), self.resolution[1]//2
         if self.phone == 'Android':
             cmd = 'adb shell input swipe {} {} {} {} {}'.format(press_w, press_h, press_w, press_h, press_time)
             print(cmd)
@@ -187,9 +192,24 @@ class WechatAutoJump(object):
                 print('CNN-search: %04d' % self.step)
         if self.debug:
             self.debugging()
+
+        from scipy.stats import truncnorm
+        trunc_limit = 10
+        sigma = 5
+
+        shift_x = truncnorm.rvs(-trunc_limit/sigma, trunc_limit/sigma, 0, sigma)
+        shift_y = truncnorm.rvs(-trunc_limit/sigma, trunc_limit/sigma, 0, sigma)
+        self.target_pos += np.array([np.rint(shift_x), np.rint(shift_y)], dtype=np.int64)
+
         self.jump(self.player_pos, self.target_pos)
         self.step += 1
-        time.sleep(1.5)
+        
+        sleep_time = abs(random.gauss(2.5, 1.0)) #random.uniform(-1.5, 2.5)
+        if sleep_time <= 1.0:
+            sleep_time = 1.0
+        time.sleep(sleep_time)
+        
+        #time.sleep(1.5)
 
     def run(self):
         try:
